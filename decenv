@@ -1,17 +1,16 @@
 #!/bin/bash
 
 vault=`which ansible-vault`
-SECRET=secret/vault-password.txt
+secret=secret/vault-password.txt
 
-if [ ! -f $SECRET ]; then
+if [ ! -f $secret ]; then
     read -sp "Password: " PASS
-    mkdir -p secret && echo $PASS > $SECRET
+    mkdir -p secret && echo $PASS > $secret
 fi
 
-GCPKEY=`$vault view .gcpkey.json.vault --vault-password-file=$SECRET | cat -`
+gcpkey=`$vault view .gcpkey.json.vault --vault-password-file=$secret | cat -`
+environ=`$vault view .env.vault --vault-password-file=$secret | cat -`
 
 mkdir -p ./overlays/production/elle/secret
-echo $GCPKEY > ./overlays/production/elle/secret/elle-gcpkey.json
-
-$vault view .env.vault --vault-password-file=$SECRET | cat -
-
+echo  $gcpkey   > ./overlays/production/elle/secret/elle-gcpkey.json
+echo "$environ" > ./overlays/production/elle/secret/elle.env

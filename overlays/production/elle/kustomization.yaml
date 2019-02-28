@@ -61,9 +61,11 @@ resources:
 # Each entry in this list results in the creation of
 # one Secret resource (it's a generator of n secrets).
 secretGenerator:
-- name: gcread
+- name: gcp
   files:
     - secret/elle-gcpkey.json
+- name: env
+  env: secret/elle.env
 
 # - name: app-tls
   # files:
