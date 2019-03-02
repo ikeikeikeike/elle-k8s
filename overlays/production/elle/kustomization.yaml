@@ -61,9 +61,12 @@ resources:
 # Each entry in this list results in the creation of
 # one Secret resource (it's a generator of n secrets).
 secretGenerator:
-- name: gcp
+- name: google
   files:
     - secret/elle-gcpkey.json
+- name: fastcgi
+  files:
+    - secret/fastcgi_params_secret.cubefpm
 - name: env
   env: secret/elle.env
 
@@ -116,7 +119,7 @@ secretGenerator:
 # crucial ways (image tags, a few server arguments,
 # etc. that differ from the common base).
 bases:
-# - ../../base
+- ../../../base/ellecube
 # - github.com/kubernetes-sigs/kustomize//examples/multibases?ref=v1.0.6
 # - github.com/Liujingfang1/mysql
 # - github.com/Liujingfang1/kustomize//examples/helloWorld?ref=test-branch
@@ -135,6 +138,7 @@ bases:
 # ConfigMap, etc.  Small patches are easy to review and
 # easy to mix together in overlays.
 patchesStrategicMerge:
+# - ellecube-nginx_patch.yaml
 # - service_port_8888.yaml
 # - deployment_increase_replicas.yaml
 # - deployment_increase_memory.yaml

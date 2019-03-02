@@ -9,8 +9,10 @@ if [ ! -f $secret ]; then
 fi
 
 gcpkey=`$vault view .gcpkey.json.vault --vault-password-file=$secret | cat -`
+cubefpm=`$vault view .fastcgi_params_secret.cubefpm.vault --vault-password-file=$secret | cat -`
 environ=`$vault view .env.vault --vault-password-file=$secret | cat -`
 
 mkdir -p ./overlays/production/elle/secret
 echo  $gcpkey   > ./overlays/production/elle/secret/elle-gcpkey.json
+echo  $cubefpm  > ./overlays/production/elle/secret/fastcgi_params_secret.cubefpm
 echo "$environ" > ./overlays/production/elle/secret/elle.env

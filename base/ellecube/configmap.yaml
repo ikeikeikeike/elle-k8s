@@ -1,0 +1,183 @@
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ellecube-nginx-conf
+data:
+  ellecube.conf: |-
+
+    proxy_cache_path /var/cache/memdisk/cache levels=1:2 keys_zone=presskey:8m max_size=100m inactive=5m;
+    proxy_temp_path /var/cache/memdisk/tmp;
+
+    server {
+        listen 80; listen [::]:80;
+
+        server_name localhost;
+        root /apps/ellecube; # root /apps/ellecube-shared;
+
+        access_log /dev/stdout main;
+        error_log /dev/stderr error;
+
+        # set_real_ip_from    10.1.0.0/16;
+        # real_ip_header      X-Forwarded-For;
+
+        if ($http_x_forwarded_proto = "http") {
+            return 301 https://$host$request_uri;
+        }
+
+        client_max_body_size 100M;
+
+        # clickjacking
+        add_header X-Frame-Options SAMEORIGIN;
+
+        # XSS
+        add_header X-XSS-Protection "1; mode=block";
+        add_header X-Content-Type-Options nosniff;
+
+        # Forbidden
+        disable_symlinks on from=$document_root;
+
+        # Authorization
+        #proxy_set_header Authorization $http_authorization;
+
+        location / {
+            try_files $uri /index.php$is_args$args;
+        }
+
+        location ~ /\. {
+            deny all;
+        }
+        location ~* /(?:src|app|tests|var|vendor|node_modules|codeception|bin)/ {
+            deny all;
+        }
+        location ~* /(?:composer|COPYING|Procfile|app.json|gulpfile.js|package.json|package-lock.json|web.config)$ {
+            deny all;
+        }
+
+        location ~* ^.+\.(?:mp4|ttf|jpg|jpeg|gif|png|ico|zip|tgz|gz|rar|bz2|doc|xls|ppt|tar|mid|midi|wav|bmp|rtf|wmv)$ {
+            access_log off;
+            log_not_found off;
+            if (-f $request_filename) {
+                expires 60m;  # browser cache
+                break;
+            }
+        }
+
+        location ~ ^/index\.php(/|$) {
+            fastcgi_pass  127.0.0.1:9000; # unix:/var/run/php/php7.2-fpm.sock;
+            fastcgi_index index.php;
+            fastcgi_split_path_info ^(.+\.php)(/.*)$;
+
+            include fastcgi_params;
+            include /secrets/fastcgi/fastcgi_params_secret.cubefpm;
+
+            # optionally set the value of the environment variables used in the application
+            # fastcgi_param APP_ENV prod;
+            # fastcgi_param APP_SECRET <app-secret-id>;
+            # fastcgi_param DATABASE_URL "mysql://db_user:db_pass@host:3306/db_name";
+
+            # When you are using symlinks to link the document root to the
+            # current version of your application, you should pass the real
+            # application path instead of the path to the symlink to PHP
+            # FPM.
+            # Otherwise, PHP's OPcache may not properly detect changes to
+            # your PHP files (see https://github.com/zendtech/ZendOptimizerPlus/issues/126
+            # for more information).
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            fastcgi_param DOCUMENT_ROOT $realpath_root;
+
+            # Authorization
+            #fastcgi_param HTTP_AUTHORIZATION $http_authorization;
+
+            # Prevents URIs that include the front controller. This will 404:
+            # http://domain.tld/index.php/some-path
+            # Remove the internal directive to allow URIs like this
+            internal;
+        }
+
+        # return 404 for all other php files not matching the front controller
+        # this prevents access to other php files you don't want to be accessible.
+        location ~ \.php$ {
+            return 404;
+        }
+    }
+
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: simply-nginx-conf
+data:
+  nginx.conf: |-
+    user  nginx;
+    worker_processes  auto;
+    worker_rlimit_nofile 30720;
+
+    error_log  /var/log/nginx/error.log warn;
+    pid        /var/run/nginx.pid;
+
+    events {
+        worker_connections  10240;
+        multi_accept on;
+    }
+
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+
+        log_format ltsv 'time:$time_local\t'
+                        'server:$server_name\t'
+                        'remote_addr:$remote_addr\t'
+                        'x_forwarded_for:$http_x_forwarded_for\t'
+                        'time_local:$msec\t'
+                        'request_uri:$request_uri\t'
+                        'request:$request\t'
+                        'body_bytes_sent:$body_bytes_sent\t'
+                        'status:$status\t'
+                        'referer:$http_referer\t'
+                        'user_agent:$http_user_agent';
+
+        log_format main '$remote_addr - $remote_user [$time_local] "$request" '
+                        '$status $body_bytes_sent "$http_referer" '
+                        '"$http_user_agent" "$http_x_forwarded_for"';
+
+        access_log  /var/log/nginx/access.log main buffer=16k flush=2m;
+
+        types_hash_max_size 2048;
+
+        client_max_body_size 500M;
+
+        sendfile        on;
+        tcp_nopush      on;
+        tcp_nodelay     on;
+
+        keepalive_timeout  65;
+        keepalive_requests 100;
+
+        server_names_hash_bucket_size 64;
+        server_tokens off;
+
+        # gzip on;
+
+        gzip                      on;
+        gzip_static               on;
+
+        proxy_read_timeout        300;
+        proxy_send_timeout        300;
+        proxy_connect_timeout     300;
+
+        proxy_intercept_errors    on;
+
+        proxy_set_header          Connection 'keep-alive';
+        proxy_set_header          Host $http_host;
+        proxy_set_header          X-Scheme $scheme;
+        proxy_set_header          X-Real-IP $remote_addr;
+        proxy_set_header          X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # include /etc/nginx/conf.d/*.conf;  # Disable to conf.d/default.conf
+        include /etc/nginx/sites-enabled/*;
+    }
+

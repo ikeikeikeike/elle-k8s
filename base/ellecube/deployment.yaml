@@ -1,0 +1,65 @@
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ellecube
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: ellecube
+      labels:
+        base: ellecube
+    spec:
+      containers:
+      - name: public
+        image: asia.gcr.io/ellecafe/ellecube:latest
+        imagePullPolicy: Always
+        command: ["sh", "-c", "tail -f /dev/null"]
+        # command: ["/bin/sh", "-c", "java -jar /apps/ellecube/press/press.jar"]
+        volumeMounts:
+        - name: google
+          mountPath: /secrets/google
+        - name: ellecube-shared
+          mountPath: /apps/ellecube-shared
+
+      - name: simply-nginx
+        image: nginx:alpine
+        ports:
+        - name: simply-nginx
+          containerPort: 80
+        volumeMounts:
+        - name: google
+          mountPath: /secrets/google
+        - name: fastcgi
+          mountPath: /secrets/fastcgi
+        - name: ellecube-nginx-conf
+          mountPath: /etc/nginx/sites-enabled/ellecube.conf
+          subPath: ellecube.conf
+        - name: simply-nginx-conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: ellecube-shared
+          mountPath: /apps/ellecube-shared
+        - name: simply-nginx-cache
+          mountPath: /var/cache/memdisk
+
+      volumes:
+      - name: google
+        secret:
+          secretName: google
+      - name: fastcgi
+        secret:
+          secretName: fastcgi
+      - name: ellecube-nginx-conf
+        configMap:
+          name: ellecube-nginx-conf
+      - name: simply-nginx-conf
+        configMap:
+          name: simply-nginx-conf
+      - name: ellecube-shared
+        emptyDir: {}
+      - name: simply-nginx-cache
+        emptyDir: {}
+
