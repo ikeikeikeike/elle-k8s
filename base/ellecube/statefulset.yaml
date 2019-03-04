@@ -1,0 +1,111 @@
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ellecube
+spec:
+  replicas: 1
+  serviceName: ellecube
+  template:
+    metadata:
+      name: ellecube
+      labels:
+        base: ellecube
+    spec:
+      containers:
+      - name: public
+        image: asia.gcr.io/ellecafe/ellecube
+        imagePullPolicy: Always
+        # command: ["/bin/sh", "-c", "mv /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini && php-fpm"]
+        # command: ["sh", "-c", "tail -f /dev/null"]
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "cp -pR /apps/ellecube /apps/ellecube-storage && chown -R www-data:www-data /apps/ellecube-storage"]
+        envFrom:
+        - secretRef:
+            name: env
+        volumeMounts:
+        - name: google
+          mountPath: /secrets/google
+        - name: fastcgi
+          mountPath: /secrets/fastcgi
+        - name: ellecube-shared
+          mountPath: /apps/ellecube-shared
+        - name: ellecube-storage
+          mountPath: /apps/ellecube-storage
+
+      - name: simply-nginx
+        image: nginx:alpine
+        # command: ["sh", "-c", "tail -f /dev/null"]
+        ports:
+        - name: simply-nginx
+          containerPort: 80
+        envFrom:
+        - secretRef:
+            name: env
+        volumeMounts:
+        - name: google
+          mountPath: /secrets/google
+        - name: fastcgi
+          mountPath: /secrets/fastcgi
+        - name: ellecube-shared
+          mountPath: /apps/ellecube-shared
+        - name: ellecube-storage
+          mountPath: /apps/ellecube-storage
+        - name: ellecube-nginx-conf
+          mountPath: /etc/nginx/sites-enabled/ellecube.conf
+          subPath: ellecube.conf
+        - name: simply-nginx-conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: simply-nginx-cache
+          mountPath: /var/cache/memdisk
+
+
+      - name: cloudsql-proxy
+        image: gcr.io/cloudsql-docker/gce-proxy:1.13
+        command: ["/cloud_sql_proxy",
+                  "-instances=ellecafe:asia-northeast1:ellemaster-instance=tcp:3306",
+                  "-credential_file=/secrets/google/elle-gcpkey.json"]
+        volumeMounts:
+        - name: google
+          mountPath: /secrets/google
+        - name: fastcgi
+          mountPath: /secrets/fastcgi
+        - name: ellecube-storage
+          mountPath: /apps/ellecube-storage
+
+      volumes:
+      - name: google
+        secret:
+          secretName: google
+      - name: fastcgi
+        secret:
+          secretName: fastcgi
+      - name: ellecube-nginx-conf
+        configMap:
+          name: ellecube-nginx-conf
+      - name: simply-nginx-conf
+        configMap:
+          name: simply-nginx-conf
+      - name: ellecube-shared
+        emptyDir: {}
+      - name: simply-nginx-cache
+        emptyDir: {}
+
+  volumeClaimTemplates:
+  - metadata:
+      name: ellecube-storage
+      annotations:
+        pv.beta.kubernetes.io/uid: "33"  # www-data
+        pv.beta.kubernetes.io/gid: "33"  # www-data
+
+    spec:
+      accessModes: [ ReadWriteOnce ]
+      # volumeMode: Filesystem
+      # storageClassName: standard
+      resources:
+        requests:
+          storage: 50Gi
