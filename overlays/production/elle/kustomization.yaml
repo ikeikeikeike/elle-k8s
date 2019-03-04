@@ -29,7 +29,7 @@ commonLabels:
 # to add to all resources.  Like labels,
 # these are key value pairs.
 commonAnnotations:
-  rr: nonenon
+  rr: nonenonenone
 
 # Each entry in this list must resolve to an existing
 # resource definition in YAML.  These are the resource
@@ -67,6 +67,7 @@ secretGenerator:
 - name: fastcgi
   files:
     - secret/fastcgi_params_secret.cubefpm
+    - secret/fastcgi_params_secret.pressfpm
 - name: env
   env: secret/elle.env
 
@@ -120,6 +121,8 @@ secretGenerator:
 # etc. that differ from the common base).
 bases:
 - ../../../base/ellecube
+- ../../../base/ellepress
+- ../../../base/simply-nginx
 # - github.com/kubernetes-sigs/kustomize//examples/multibases?ref=v1.0.6
 # - github.com/Liujingfang1/mysql
 # - github.com/Liujingfang1/kustomize//examples/helloWorld?ref=test-branch

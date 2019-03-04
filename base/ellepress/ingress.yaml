@@ -1,0 +1,14 @@
+---
+
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ellepress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: elle-lb
+spec:
+  # tls:
+  # - secretName: elle-tls
+  backend:
+    serviceName: ellepress
+    servicePort: 80

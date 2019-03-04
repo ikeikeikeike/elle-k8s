@@ -1,0 +1,53 @@
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ellepress-nginx-conf
+data:
+  ellepress.conf: |-
+
+    proxy_cache_path /var/cache/memdisk/cache levels=1:2 keys_zone=presskey:8m max_size=100m inactive=5m;
+    proxy_temp_path /var/cache/memdisk/tmp;
+
+    server {
+        listen 80; listen [::]:80;
+
+        server_name localhost;
+        root /apps/ellepress-storage/ellepress;
+
+        access_log /dev/stdout main;
+        error_log /dev/stderr error;
+
+        charset utf-8;
+        index index.php;
+
+        # set_real_ip_from    10.1.0.0/16;
+        # real_ip_header      X-Forwarded-For;
+
+        # if ($http_x_forwarded_proto = "http") {
+            # return 301 https://$host$request_uri;
+        # }
+
+        location / {
+          try_files $uri $uri/ /index.php?$args;
+        }
+
+        location ~* /wp-config.php {
+          deny all;
+        }
+
+        location ~ \.php$ {
+          fastcgi_pass  127.0.0.1:9000;
+          fastcgi_index index.php;
+          fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+          fastcgi_param DOCUMENT_ROOT $realpath_root;
+          fastcgi_param PATH_INFO $fastcgi_script_name;
+          include fastcgi_params;
+          include /secrets/fastcgi/fastcgi_params_secret.pressfpm;
+
+          fastcgi_hide_header X-Powered-By;
+        }
+    }
+
+

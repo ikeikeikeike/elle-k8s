@@ -1,0 +1,113 @@
+---
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ellepress
+spec:
+  replicas: 1
+  serviceName: ellepress
+  template:
+    metadata:
+      name: ellepress
+      labels:
+        base: ellepress
+    spec:
+      containers:
+      - name: public
+        image: asia.gcr.io/ellecafe/ellepress
+        imagePullPolicy: Always
+        # command: ["/bin/sh", "-c", "mv /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini && php-fpm"]
+        # command: ["/bin/sh", "-c", "cd /apps/ellepress-storage/ellepress && bin/console server:run"]
+        # command: ["sh", "-c", "tail -f /dev/null"]
+        lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "cp -pR /apps/ellepress /apps/ellepress-storage && chown -R www-data:www-data /apps/ellepress-storage"]
+        envFrom:
+        - secretRef:
+            name: env
+        volumeMounts:
+        - name: google
+          mountPath: /secrets/google
+        - name: fastcgi
+          mountPath: /secrets/fastcgi
+        - name: ellepress-shared
+          mountPath: /apps/ellepress-shared
+        - name: ellepress-storage
+          mountPath: /apps/ellepress-storage
+
+      - name: simply-nginx
+        image: nginx:alpine
+        # command: ["sh", "-c", "tail -f /dev/null"]
+        ports:
+        - name: simply-nginx
+          containerPort: 80
+        envFrom:
+        - secretRef:
+            name: env
+        volumeMounts:
+        - name: google
+          mountPath: /secrets/google
+        - name: fastcgi
+          mountPath: /secrets/fastcgi
+        - name: ellepress-shared
+          mountPath: /apps/ellepress-shared
+        - name: ellepress-storage
+          mountPath: /apps/ellepress-storage
+        - name: ellepress-nginx-conf
+          mountPath: /etc/nginx/sites-enabled/ellepress.conf
+          subPath: ellepress.conf
+        - name: simply-nginx-conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: simply-nginx-cache
+          mountPath: /var/cache/memdisk
+
+
+      - name: cloudsql-proxy
+        image: gcr.io/cloudsql-docker/gce-proxy:1.13
+        command: ["/cloud_sql_proxy",
+                  "-instances=ellecafe:asia-northeast1:ellemaster-instance=tcp:3306",
+                  "-credential_file=/secrets/google/elle-gcpkey.json"]
+        volumeMounts:
+        - name: google
+          mountPath: /secrets/google
+        - name: fastcgi
+          mountPath: /secrets/fastcgi
+        - name: ellepress-storage
+          mountPath: /apps/ellepress-storage
+
+      volumes:
+      - name: google
+        secret:
+          secretName: google
+      - name: fastcgi
+        secret:
+          secretName: fastcgi
+      - name: ellepress-nginx-conf
+        configMap:
+          name: ellepress-nginx-conf
+      - name: simply-nginx-conf
+        configMap:
+          name: simply-nginx-conf
+      - name: ellepress-shared
+        emptyDir: {}
+      - name: simply-nginx-cache
+        emptyDir: {}
+
+  volumeClaimTemplates:
+  - metadata:
+      name: ellepress-storage
+      annotations:
+        pv.beta.kubernetes.io/uid: "33"  # www-data
+        pv.beta.kubernetes.io/gid: "33"  # www-data
+
+    spec:
+      accessModes: [ ReadWriteOnce ]
+      # volumeMode: Filesystem
+      # storageClassName: standard
+      resources:
+        requests:
+          storage: 50Gi
+
