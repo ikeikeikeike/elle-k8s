@@ -56,7 +56,10 @@ data:
         location ~ /\. {
             deny all;
         }
-        location ~* /(?:src|app|tests|var|vendor|node_modules|codeception|bin)/ {
+        location /vendor {
+            deny all;
+        }
+        location ~* /(?:src|app|tests|var|node_modules|codeception|bin)/ {
             deny all;
         }
         location ~* /(?:composer|COPYING|Procfile|app.json|gulpfile.js|package.json|package-lock.json|web.config)$ {

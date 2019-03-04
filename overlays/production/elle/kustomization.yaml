@@ -29,7 +29,7 @@ commonLabels:
 # to add to all resources.  Like labels,
 # these are key value pairs.
 commonAnnotations:
-  rr: none
+  rr: nonenon
 
 # Each entry in this list must resolve to an existing
 # resource definition in YAML.  These are the resource
