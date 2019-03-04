@@ -7,6 +7,11 @@ metadata:
 data:
   ellecube.conf: |-
 
+    # upstream develop_backend {
+        # server 127.0.0.1:8000;  # debug
+        # keepalive 64;
+    # }
+
     proxy_cache_path /var/cache/memdisk/cache levels=1:2 keys_zone=presskey:8m max_size=100m inactive=5m;
     proxy_temp_path /var/cache/memdisk/tmp;
 
@@ -44,6 +49,9 @@ data:
         location / {
             try_files $uri /index.php$is_args$args;
         }
+        # location / {
+            # proxy_pass http://develop_backend;
+        # }
 
         location ~ /\. {
             deny all;

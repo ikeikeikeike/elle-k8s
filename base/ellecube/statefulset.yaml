@@ -18,6 +18,7 @@ spec:
         image: asia.gcr.io/ellecafe/ellecube
         imagePullPolicy: Always
         # command: ["/bin/sh", "-c", "mv /usr/local/etc/php/php.ini-development /usr/local/etc/php/php.ini && php-fpm"]
+        # command: ["/bin/sh", "-c", "cd /apps/ellecube-storage/ellecube && bin/console server:run"]
         # command: ["sh", "-c", "tail -f /dev/null"]
         lifecycle:
           postStart:
